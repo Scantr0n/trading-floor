@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent HQ — Trading Floor</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg0: #0c0c1a; --bg1: #10102a; --bg2: #181830; --bg3: #22223a;
+  --t1: #e8e8f8; --t2: #8888aa; --t3: #444466;
+  --bd: rgba(255,255,255,0.07);
+  --ac: #6a8fff;
+}
+
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg0); color: var(--t1); display: flex; height: 100vh; overflow: hidden; font-size: 13px; }
+
+/* SIDEBAR */
+#sidebar { width: 215px; background: var(--bg1); border-right: 1px solid var(--bd); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+.logo { padding: 14px 14px 12px; border-bottom: 1px solid var(--bd); display: flex; align-items: center; gap: 9px; }
+.logo-sq { width: 28px; height: 28px; background: linear-gradient(135deg,#4a6fff,#a06fff); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.logo-sq span { font-size: 10px; letter-spacing: -0.5px; }
+.logo-txt h1 { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--t1); }
+.logo-txt p  { font-size: 9px; color: var(--t3); margin-top: 1px; }
+.sec-lbl { padding: 12px 14px 3px; font-size: 9px; font-weight: 600; color: var(--t3); letter-spacing: 1.8px; text-transform: uppercase; }
+.floor-row { padding: 6px 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--t2); border-left: 2px solid transparent; transition: all 0.12s; user-select: none; }
+.floor-row:hover { background: rgba(255,255,255,0.025); color: var(--t1); }
+.floor-row.active { color: var(--ac); border-left-color: var(--ac); background: rgba(106,143,255,0.06); }
+.floor-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.f-cnt { margin-left: auto; font-size: 9px; color: var(--t3); background: rgba(255,255,255,0.04); padding: 1px 5px; border-radius: 3px; }
+.agent-row { padding: 4px 14px 4px 30px; cursor: pointer; display: flex; align-items: center; gap: 7px; font-size: 10.5px; color: var(--t3); transition: background 0.1s; user-select: none; }
+.agent-row:hover { background: rgba(255,255,255,0.02); color: var(--t2); }
+.a-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.pill { margin-left: auto; font-size: 8.5px; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.p-work { background: rgba(46,204,113,.14); color: #2ecc71; }
+.p-idle { background: rgba(80,80,120,.12); color: var(--t3); }
+.p-coffee { background: rgba(230,126,34,.14); color: #e67e22; }
+.p-sleep { background: rgba(120,100,200,.14); color: #9988dd; }
+.sb-footer { margin-top: auto; padding: 12px; border-top: 1px solid var(--bd); }
+#add-btn { width: 100%; padding: 8px; background: rgba(106,143,255,.09); border: 1px solid rgba(106,143,255,.22); color: var(--ac); border-radius: 7px; font-size: 11px; cursor: pointer; font-family: inherit; letter-spacing: .5px; transition: background .15s; }
+#add-btn:hover { background: rgba(106,143,255,.17); }
+
+/* MAIN */
+#main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+#topbar { height: 46px; background: var(--bg1); border-bottom: 1px solid var(--bd); display: flex; align-items: center; padding: 0 18px; gap: 14px; flex-shrink: 0; }
+#floor-name { font-size: 12.5px; font-weight: 500; }
+#floor-sub  { font-size: 9.5px; color: var(--t3); }
+.div { width: 1px; height: 18px; background: var(--bd); }
+#mkt { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--t2); }
+.mpulse { width: 7px; height: 7px; border-radius: 50%; transition: background .3s; }
+.mpulse.open { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; }
+.mpulse.closed { background: var(--t3); }
+#clock { margin-left: auto; font-size: 10px; color: var(--t3); font-variant-numeric: tabular-nums; }
+
+#viewport { flex: 1; position: relative; overflow: hidden; }
+canvas { display: block; }
+
+/* AGENT CARD */
+#acard { position: absolute; right: 14px; top: 14px; width: 226px; background: var(--bg1); border: 1px solid var(--bd); border-radius: 12px; padding: 13px; display: none; z-index: 10; box-shadow: 0 12px 40px rgba(0,0,0,.6); }
+#acard.show { display: block; }
+.card-head { display: flex; align-items: center; gap: 9px; margin-bottom: 11px; }
+.card-av { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: rgba(255,255,255,.9); flex-shrink: 0; }
+.card-nm { font-size: 12px; font-weight: 500; }
+.card-st { font-size: 9.5px; color: var(--t3); margin-top: 1px; }
+.card-x  { margin-left: auto; background: none; border: none; color: var(--t3); cursor: pointer; font-size: 14px; line-height: 1; padding: 2px; }
+.card-x:hover { color: var(--t1); }
+.sr { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--bd); font-size: 10.5px; }
+.sr:last-child { border: none; }
+.sl { color: var(--t3); }
+.sv { color: var(--t1); font-weight: 500; }
+.sv.pos { color: #2ecc71; }
+.sv.neg { color: #e74c3c; }
+.log-h { font-size: 8.5px; color: var(--t3); letter-spacing: 1.2px; text-transform: uppercase; margin: 9px 0 4px; }
+.lr { font-size: 9.5px; color: var(--t3); padding: 1.5px 0; font-family: 'SF Mono','Fira Code',monospace; }
+.lr .ts  { color: #282844; }
+.lr .act { color: var(--ac); }
+
+#statusbar { height: 24px; background: var(--bg0); border-top: 1px solid var(--bd); display: flex; align-items: center; padding: 0 18px; gap: 22px; font-size: 9.5px; color: var(--t3); flex-shrink: 0; }
+.sbi { display: flex; align-items: center; gap: 5px; }
+.sbi strong { color: var(--t2); }
+
+/* MODAL */
+#moverlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: none; align-items: center; justify-content: center; z-index: 100; }
+#moverlay.show { display: flex; }
+#modal { background: var(--bg2); border: 1px solid var(--bd); border-radius: 14px; padding: 22px; width: 296px; }
+#modal h2 { font-size: 12.5px; font-weight: 500; margin-bottom: 15px; }
+.fr { margin-bottom: 11px; }
+.fr label { display: block; font-size: 9px; color: var(--t3); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 4px; }
+.fr input, .fr select { width: 100%; padding: 8px 10px; background: var(--bg1); border: 1px solid var(--bd); border-radius: 7px; color: var(--t1); font-size: 11.5px; font-family: inherit; outline: none; }
+.fr input:focus, .fr select:focus { border-color: var(--ac); }
+.swatches { display: flex; gap: 7px; flex-wrap: wrap; }
+.sw { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform .12s; }
+.sw.sel { border-color: #fff; transform: scale(1.2); }
+.mbtns { display: flex; gap: 8px; margin-top: 15px; }
+.bcancel { padding: 8px 14px; background: none; border: 1px solid var(--bd); color: var(--t2); border-radius: 7px; cursor: pointer; font-family: inherit; font-size: 11.5px; }
+.bprime { flex: 1; padding: 8px; background: rgba(106,143,255,.13); border: 1px solid rgba(106,143,255,.28); color: var(--ac); border-radius: 7px; cursor: pointer; font-family: inherit; font-size: 11.5px; font-weight: 500; }
+.bcancel:hover { border-color: rgba(255,255,255,.14); color: var(--t1); }
+.bprime:hover  { background: rgba(106,143,255,.22); }
+</style>
+</head>
+<body>
+
+<aside id="sidebar">
+  <div class="logo">
+    <div class="logo-sq"><span>HQ</span></div>
+    <div class="logo-txt"><h1>AGENT HQ</h1><p>Trading Floor System</p></div>
+  </div>
+  <div id="floor-nav"></div>
+  <div class="sb-footer"><button id="add-btn">+ New Agent</button></div>
+</aside>
+
+<main id="main">
+  <div id="topbar">
+    <div><div id="floor-name"></div><div id="floor-sub"></div></div>
+    <div class="div"></div>
+    <div id="mkt"><div class="mpulse" id="mpulse"></div><span id="mlabel"></span></div>
+    <div id="clock"></div>
+  </div>
+  <div id="viewport">
+    <canvas id="c"></canvas>
+    <div id="acard">
+      <div class="card-head">
+        <div class="card-av" id="cav"></div>
+        <div><div class="card-nm" id="cnm"></div><div class="card-st" id="cst"></div></div>
+        <button class="card-x" id="cx">x</button>
+      </div>
+      <div id="cstats"></div>
+      <div class="log-h">Activity</div>
+      <div id="clog"></div>
+    </div>
+  </div>
+  <div id="statusbar">
+    <div class="sbi">Floor agents: <strong id="sb1">-</strong></div>
+    <div class="sbi">Active: <strong id="sb2">-</strong></div>
+    <div class="sbi">Floor P&L: <strong id="sb3">-</strong></div>
+  </div>
+</main>
+
+<div id="moverlay">
+  <div id="modal">
+    <h2>Add New Agent</h2>
+    <div class="fr"><label>Name</label><input id="fn" type="text" placeholder="e.g. Omega" /></div>
+    <div class="fr"><label>Floor</label><select id="ff"></select></div>
+    <div class="fr"><label>Color</label><div class="swatches" id="fsw"></div></div>
+    <div class="mbtns">
+      <button class="bcancel" id="mc">Cancel</button>
+      <button class="bprime" id="mok">Add Agent</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── DATA ──────────────────────────────────────────────────────────────────────
+
+const FLOORS = [
+  { id:1, name:'Paper Trading', sub:'Simulation & Learning', col:'#4A90D9' },
+  { id:2, name:'Live Trading',  sub:'US Equities',           col:'#27AE60' },
+  { id:3, name:'Forex',         sub:'Currency Pairs',        col:'#E67E22' },
+  { id:4, name:'Crypto',        sub:'Digital Assets',        col:'#9B59B6' },
+];
+
+const PALETTE = ['#4A90D9','#E67E22','#9B59B6','#27AE60','#E74C3C','#F1C40F','#1ABC9C','#E91E63','#00BCD4','#FF5722'];
+
+let agents = [
+  makeAgent('a1','Alpha',  '#4A90D9',1, 23.4, 14,'BUY NVDA @ 892.30', ['10:46 BUY NVDA @ 892.30','10:31 SELL AAPL @ 182.10','09:45 BUY MSFT @ 412.50'], 0),
+  makeAgent('a2','Beta',   '#E67E22',1,-8.2,   7,'SELL TSLA @ 248.90',['10:44 SELL TSLA @ 248.90','10:20 BUY TSLA @ 251.00','09:30 BUY AMD @ 168.40'],  1.2),
+  makeAgent('a3','Gamma',  '#9B59B6',2, 51.7, 22,'BUY AAPL @ 182.00', ['10:45 BUY AAPL @ 182.00','10:30 SELL GOOG @ 178.20','10:15 BUY META @ 502.10'],2.4),
+  makeAgent('a4','Delta',  '#27AE60',2, 12.1,  9,'SELL SPY @ 521.40', ['10:43 SELL SPY @ 521.40','10:28 BUY QQQ @ 452.10','09:55 BUY SPY @ 519.20'],  0.8),
+  makeAgent('a5','Epsilon','#E74C3C',3,-22.3, 31,'SELL EUR/USD @ 1.08',['10:46 SELL EUR/USD @ 1.08','10:30 BUY GBP/JPY @ 195.4','10:12 SELL USD/CHF @ 0.90'],1.8),
+  makeAgent('a6','Zeta',   '#1ABC9C',3,  8.9, 18,'BUY USD/JPY @ 154.2',['10:44 BUY USD/JPY @ 154.2','10:22 SELL AUD/USD @ 0.658','09:50 BUY EUR/GBP @ 0.854'],3.1),
+  makeAgent('a7','Eta',    '#F1C40F',4,142.5,  8,'BUY BTC @ 68420',   ['10:46 BUY BTC @ 68420','10:15 SELL ETH @ 3842','09:30 BUY SOL @ 182.5'],       0.4),
+  makeAgent('a8','Theta',  '#E91E63',4,-31.4, 12,'SELL ETH @ 3798.5', ['10:45 SELL ETH @ 3798.5','10:30 BUY DOGE @ 0.142','10:00 SELL BTC @ 67800'],   2.0),
+];
+
+function makeAgent(id,name,col,floor,pnl,trades,lastAct,log,bob){
+  return {id,name,col,floor,pnl,trades,lastAct,log,bob};
+}
+
+let curFloor = 1, selId = null, pickedCol = PALETTE[0], tick = 0;
+
+// ── MARKET ─────────────────────────────────────────────────────────────────────
+
+function mktOpen() {
+  const n = new Date(), d = n.getDay();
+  if (d===0||d===6) return false;
+  const m = n.getHours()*60+n.getMinutes();
+  return m>=570 && m<960;
+}
+let marketOpen = mktOpen();
+
+function agentState(a) {
+  if (marketOpen) return 'working';
+  const h = a.id.split('').reduce((s,c)=>s+c.charCodeAt(0),0)%3;
+  return h===0?'sleeping':h===1?'coffee':'idle';
+}
+
+// ── ISOMETRIC ENGINE ──────────────────────────────────────────────────────────
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const GRID = 10;
+const TW=60, TH=30, EH=30;
+let OX=500, OY=70;
+
+function g2s(gx,gy,gz=0) {
+  return { x: OX+(gx-gy)*TW*.5, y: OY+(gx+gy)*TH*.5-gz*EH };
+}
+
+function shade(hex, n) {
+  const c=v=>Math.max(0,Math.min(255,v));
+  const i=parseInt(hex.replace('#',''),16);
+  return `rgb(${c((i>>16&255)+n)},${c((i>>8&255)+n)},${c((i&255)+n)})`;
+}
+
+function ha(hex,a) {
+  const i=parseInt(hex.replace('#',''),16);
+  return `rgba(${i>>16&255},${i>>8&255},${i&255},${a})`;
+}
+
+function face(pts, col, stk) {
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x,pts[0].y);
+  for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x,pts[i].y);
+  ctx.closePath();
+  ctx.fillStyle=col; ctx.fill();
+  if(stk){ctx.strokeStyle=stk;ctx.lineWidth=.5;ctx.stroke();}
+}
+
+function box(gx,gy,gz,gw,gd,gh,ct,cl,cr,sk='rgba(0,0,0,.3)') {
+  const tfl=g2s(gx,    gy+gd,gz+gh), tfr=g2s(gx+gw,gy+gd,gz+gh);
+  const tbr=g2s(gx+gw, gy,   gz+gh), tbl=g2s(gx,   gy,   gz+gh);
+  const bfl=g2s(gx,    gy+gd,gz),    bfr=g2s(gx+gw,gy+gd,gz);
+  const bbr=g2s(gx+gw, gy,   gz);
+  face([tbl,tbr,tfr,tfl],ct,sk);
+  face([tfl,tfr,bfr,bfl],cl,sk);
+  face([tbr,tfr,bfr,bbr],cr,sk);
+}
+
+function tile(gx,gy,fc,sk) {
+  face([g2s(gx,gy),g2s(gx+1,gy),g2s(gx+1,gy+1),g2s(gx,gy+1)],fc,sk);
+}
+
+// ── DESK POSITIONS ─────────────────────────────────────────────────────────────
+
+const DESKS = [
+  {x:1.5,y:2},{x:4,y:2},{x:6.5,y:2},
+  {x:1.5,y:5},{x:4,y:5},{x:6.5,y:5},
+  {x:1.5,y:7.5},{x:4,y:7.5}
+];
+
+// ── SCENE DRAWING ─────────────────────────────────────────────────────────────
+
+function drawScene(fl) {
+  const fc = fl.col;
+
+  // floor tiles (painter order: back to front)
+  for(let sum=0; sum<GRID*2-1; sum++){
+    for(let gx=0; gx<=sum; gx++){
+      const gy=sum-gx;
+      if(gx>=GRID||gy>=GRID) continue;
+      const br = gx>=7.5 && gy>=4;
+      const b = br ? 20 : 16;
+      tile(gx,gy, `rgb(${b+((gx+gy)%2)*5},${b+((gx+gy)%2)*4},${Math.round(b*1.7+((gx+gy)%2)*7)})`, 'rgba(255,255,255,.02)');
+    }
+  }
+
+  // north wall (back)
+  for(let x=0;x<GRID;x++) box(x,0,0,1,.15,4,shade(fc,-70),shade(fc,-90),shade(fc,-80));
+  // west wall (left)
+  for(let y=1;y<GRID;y++) box(0,y,0,.15,1,4,shade(fc,-65),shade(fc,-88),shade(fc,-76));
+
+  // whiteboard on north wall
+  box(1,.1,1.1,3,.07,1.9,'#eeeef5','#d4d4dc','#e0e0e8');
+  const wb=g2s(1.12,.14,2.85);
+  [0,1,2,3].forEach(i=>{
+    ctx.fillStyle=ha(fc,.18);
+    ctx.fillRect(wb.x-i*9, wb.y+i*7, 52-i*11, 1.5);
+  });
+  ctx.fillStyle='rgba(100,120,255,.1)';
+  ctx.fillRect(wb.x+5,wb.y-10,22,12);
+
+  // kanban board
+  box(5,.1,.8,3.5,.07,2.2,'#181826','#101018','#141420');
+  const kb=g2s(5.1,.14,2.76);
+  ['#4A90D9','#27AE60','#E67E22'].forEach((c,i)=>{
+    const kx=kb.x-i*23;
+    ctx.fillStyle=ha(c,.65);
+    ctx.fillRect(kx,kb.y,16,34);
+    [0,1,2].forEach(j=>{
+      ctx.fillStyle='rgba(255,255,255,.12)';
+      ctx.fillRect(kx+1.5,kb.y+3+j*10,13,7);
+    });
+  });
+
+  // desks
+  DESKS.forEach((d,i)=>{
+    const {x:dx,y:dy}=d;
+    box(dx,dy,0,1.8,1,.5,shade('#5a3a18',12),shade('#3a2210',0),shade('#4a2c14',6));
+    box(dx+.6,dy+.3,.5,.6,.1,.1,'#1e1e1e','#181818','#1c1c1c');
+    box(dx+.12,dy+.05,.6,1.56,.07,1.06,'#111','#0a0a0a','#0d0d0d');
+    const sp=g2s(dx+.18,dy+.09,1.58);
+    if(marketOpen){
+      ctx.fillStyle='#001500'; ctx.fillRect(sp.x-1,sp.y-15,38,24);
+      ctx.fillStyle='#00ee44'; ctx.font='5.5px monospace'; ctx.textAlign='left';
+      ctx.fillText('▲ +0.8%',sp.x+1,sp.y-6);
+      ctx.fillStyle='#009933'; ctx.fillText('BUY  SELL',sp.x+1,sp.y+3);
+      ctx.fillText('P: '+(i%2===0?'+':'-')+(Math.abs(i*7+3)).toFixed(1),sp.x+1,sp.y+11);
+    } else {
+      ctx.fillStyle='#060608'; ctx.fillRect(sp.x-1,sp.y-15,38,24);
+      ctx.fillStyle='#1a1a28'; ctx.font='5px monospace';
+      ctx.fillText('CLOSED',sp.x+5,sp.y-1);
+    }
+    ctx.textAlign='left';
+  });
+
+  // break room divider
+  box(7.5,4,0,.07,5.5,3.5,shade(fc,-62),shade(fc,-82),shade(fc,-72));
+
+  // coffee machine
+  box(7.8,4.5,0,.75,.75,1.5,'#242436','#18182a','#1e1e30');
+  box(7.88,4.56,1.5,.59,.16,.32,'#2e2e40','#22223a','#282838');
+  const cp=g2s(8.1,4.65,1.82);
+  ctx.fillStyle='#3a1e10';
+  ctx.beginPath(); ctx.arc(cp.x,cp.y,5,0,Math.PI*2); ctx.fill();
+
+  // couch
+  box(7.7,6,0,1.8,1,.48,'#2c1e3e','#1e1230','#261838');
+  box(7.7,6,.48,1.8,.2,.8,'#3a2850','#28183e','#301e48');
+  box(7.7,6,0,.2,1,1.2,'#38264e','#261638','#2e1e44');
+  box(9.3,6,0,.2,1,1.2,'#38264e','#261638','#2e1e44');
+
+  // plant
+  box(8.6,.3,0,.48,.48,.38,'#162614','#0e1a0c','#122012');
+  const pp=g2s(8.84,.54,.5);
+  ctx.fillStyle='#1a5218'; ctx.beginPath(); ctx.arc(pp.x,pp.y,13,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#22682a'; ctx.beginPath(); ctx.arc(pp.x-6,pp.y-5,8,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(pp.x+6,pp.y-4,7,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#2a7a32'; ctx.beginPath(); ctx.arc(pp.x,pp.y-8,6,0,Math.PI*2); ctx.fill();
+
+  // room labels
+  const rl=g2s(8.6,7.5,0);
+  ctx.fillStyle=ha(fc,.1); ctx.font='8px -apple-system,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('BREAK ROOM',rl.x,rl.y+5); ctx.textAlign='left';
+}
+
+// ── AGENT MOVEMENT ────────────────────────────────────────────────────────────
+
+const aP={}, aT={}, aWt={};
+
+function moveAgent(agent, di, state) {
+  if(!aP[agent.id]){
+    const d=DESKS[di]||DESKS[0];
+    const s=g2s(d.x+.65,d.y+.55,.55);
+    aP[agent.id]={x:s.x,y:s.y};
+    aT[agent.id]={x:s.x,y:s.y};
+  }
+  const p=aP[agent.id];
+  if(state==='working'){
+    const d=DESKS[di]||DESKS[0];
+    aT[agent.id]=g2s(d.x+.55,d.y+.75,.55);
+  } else if(state==='coffee'){
+    const o=di%3;
+    aT[agent.id]=g2s(8.1+o*.15,5.3+o*.2,.5);
+  } else if(state==='sleeping'){
+    aT[agent.id]=g2s(7.95+(di%3)*.52,6.5+Math.floor(di/3)*.35,.5);
+  } else {
+    if(!aWt[agent.id]||aWt[agent.id]<=0){
+      aT[agent.id]=g2s(5.5+Math.random()*2.5,4.5+Math.random()*3.8,.5);
+      aWt[agent.id]=90+Math.random()*130;
+    } else { aWt[agent.id]--; }
+  }
+  const t=aT[agent.id];
+  p.x+=(t.x-p.x)*.05;
+  p.y+=(t.y-p.y)*.05;
+}
+
+// ── AGENT DRAWING ─────────────────────────────────────────────────────────────
+
+let hits = [];
+
+function drawAgent(agent, di) {
+  const state=agentState(agent);
+  moveAgent(agent,di,state);
+  const pos=aP[agent.id], col=agent.col;
+  const mood=agent.pnl>15?'happy':agent.pnl<-5?'sad':'neutral';
+  const bob = state==='working'
+    ? Math.sin(tick*.09+agent.bob)*2
+    : Math.sin(tick*.04+agent.bob)*1.2;
+
+  const bx=pos.x, by=pos.y+bob;
+
+  // shadow
+  ctx.fillStyle='rgba(0,0,0,.22)';
+  ctx.beginPath(); ctx.ellipse(bx,by+22,13,4.5,0,0,Math.PI*2); ctx.fill();
+
+  // body
+  const bg=ctx.createLinearGradient(bx-11,by-2,bx+11,by+20);
+  bg.addColorStop(0,shade(col,45)); bg.addColorStop(1,shade(col,-35));
+  ctx.fillStyle=bg;
+  ctx.beginPath(); ctx.ellipse(bx,by+8,11,15,0,0,Math.PI*2); ctx.fill();
+
+  // head
+  const hg=ctx.createRadialGradient(bx-4,by-10,2,bx,by-5,13);
+  hg.addColorStop(0,shade(col,55)); hg.addColorStop(1,shade(col,-15));
+  ctx.fillStyle=hg;
+  ctx.beginPath(); ctx.arc(bx,by-5,13,0,Math.PI*2); ctx.fill();
+
+  // visor
+  ctx.fillStyle='rgba(0,0,0,.58)';
+  ctx.beginPath(); ctx.ellipse(bx,by-4,9,7,0,0,Math.PI*2); ctx.fill();
+
+  if(state!=='sleeping'){
+    // eyes
+    ctx.fillStyle='#fff';
+    ctx.beginPath(); ctx.arc(bx-3.5,by-5.5,3,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bx+3.5,by-5.5,3,0,Math.PI*2); ctx.fill();
+    const px=state==='working'?-.5:0;
+    ctx.fillStyle='#111';
+    ctx.beginPath(); ctx.arc(bx-3.5+px,by-5,1.5,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bx+3.5+px,by-5,1.5,0,Math.PI*2); ctx.fill();
+    // mouth
+    ctx.strokeStyle='rgba(255,255,255,.38)'; ctx.lineWidth=1.5; ctx.lineCap='round';
+    ctx.beginPath();
+    if(mood==='happy')  ctx.arc(bx,by+2,4,.1*Math.PI,.9*Math.PI);
+    else if(mood==='sad') ctx.arc(bx,by+6,4,1.1*Math.PI,1.9*Math.PI);
+    else { ctx.moveTo(bx-3.5,by+2); ctx.lineTo(bx+3.5,by+2); }
+    ctx.stroke();
+  } else {
+    // sleeping x eyes
+    ctx.strokeStyle='rgba(255,255,255,.28)'; ctx.lineWidth=1.5;
+    [-4,4].forEach(ox=>{
+      ctx.beginPath(); ctx.moveTo(bx+ox-2.5,by-8); ctx.lineTo(bx+ox+2.5,by-2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx+ox+2.5,by-8); ctx.lineTo(bx+ox-2.5,by-2); ctx.stroke();
+    });
+    // z animation
+    const ph=(tick%90)/90;
+    ctx.fillStyle=`rgba(160,155,220,${.5-ph*.4})`;
+    ctx.font=`${9+ph*4}px sans-serif`; ctx.textAlign='center';
+    ctx.fillText('z',bx+14,by-16-ph*12);
+    ctx.fillStyle=`rgba(160,155,220,${.3-ph*.2})`;
+    ctx.font=`${7+ph*3}px sans-serif`;
+    ctx.fillText('z',bx+20,by-25-ph*9);
+    ctx.textAlign='left';
+  }
+
+  // mood dot
+  const mc=mood==='happy'?'#2ecc71':mood==='sad'?'#e74c3c':'#555566';
+  ctx.fillStyle=mc;
+  ctx.beginPath(); ctx.arc(bx+12,by-17,4,0,Math.PI*2); ctx.fill();
+
+  // state label (coffee break indicator)
+  if(state==='coffee'){
+    ctx.fillStyle='rgba(230,140,40,.8)'; ctx.font='7px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('COFFEE',bx,by-27); ctx.textAlign='left';
+  }
+
+  // name
+  ctx.fillStyle='rgba(255,255,255,.7)';
+  ctx.font='500 9px -apple-system,sans-serif'; ctx.textAlign='center';
+  ctx.fillText(agent.name,bx,by-26);
+  ctx.textAlign='left';
+
+  // selection ring
+  if(agent.id===selId){
+    ctx.strokeStyle=col; ctx.lineWidth=2;
+    ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.arc(bx,by,19,0,Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  hits.push({id:agent.id,agent,x:bx-17,y:by-32,w:34,h:52});
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────────────
+
+function resize(){
+  const vp=document.getElementById('viewport');
+  canvas.width=vp.clientWidth; canvas.height=vp.clientHeight;
+  OX=canvas.width*.44; OY=62;
+}
+
+function render(){
+  tick++;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const fl=FLOORS.find(f=>f.id===curFloor);
+  const fa=agents.filter(a=>a.floor===curFloor);
+
+  // drift P&L
+  if(marketOpen && tick%150===0) fa.forEach(a=>{
+    a.pnl+=(Math.random()-.48)*2;
+    a.pnl=Math.max(-65,Math.min(95,a.pnl));
+  });
+
+  drawScene(fl);
+  hits=[];
+  fa.forEach((a,i)=>drawAgent(a,i));
+  updateStatusBar(fa);
+
+  requestAnimationFrame(render);
+}
+
+// ── UI ─────────────────────────────────────────────────────────────────────────
+
+function buildSidebar(){
+  const nav=document.getElementById('floor-nav');
+  nav.innerHTML='';
+  FLOORS.forEach(fl=>{
+    const fa=agents.filter(a=>a.floor===fl.id);
+    const wrap=document.createElement('div');
+    wrap.innerHTML=`<div class="floor-row${fl.id===curFloor?' active':''}" data-fid="${fl.id}">
+      <div class="floor-dot" style="background:${fl.col}"></div>
+      F${fl.id} — ${fl.name}
+      <span class="f-cnt">${fa.length}</span>
+    </div>`;
+    wrap.querySelector('.floor-row').onclick=()=>{ curFloor=fl.id; buildSidebar(); updateTop(); };
+    fa.forEach(ag=>{
+      const st=agentState(ag);
+      const ai=document.createElement('div');
+      ai.className='agent-row';
+      ai.innerHTML=`<div class="a-dot" style="background:${ag.col}"></div>${ag.name}<span class="pill p-${st}">${st}</span>`;
+      ai.onclick=()=>{ curFloor=fl.id; buildSidebar(); updateTop(); openCard(ag); };
+      wrap.appendChild(ai);
+    });
+    nav.appendChild(wrap);
+  });
+}
+
+function updateTop(){
+  const fl=FLOORS.find(f=>f.id===curFloor);
+  document.getElementById('floor-name').textContent=`Floor ${fl.id} — ${fl.name}`;
+  document.getElementById('floor-sub').textContent=fl.sub;
+  marketOpen=mktOpen();
+  document.getElementById('mpulse').className='mpulse '+(marketOpen?'open':'closed');
+  document.getElementById('mlabel').textContent=marketOpen?'Market open':'Market closed';
+}
+
+function updateStatusBar(fa){
+  document.getElementById('sb1').textContent=fa.length;
+  document.getElementById('sb2').textContent=fa.filter(a=>agentState(a)==='working').length;
+  const tot=fa.reduce((s,a)=>s+a.pnl,0);
+  const el=document.getElementById('sb3');
+  el.textContent=(tot>=0?'+':'')+tot.toFixed(1)+'%';
+  el.style.color=tot>=0?'#2ecc71':'#e74c3c';
+}
+
+function openCard(agent){
+  selId=agent.id;
+  const st=agentState(agent);
+  const mood=agent.pnl>15?'happy':agent.pnl<-5?'struggling':'neutral';
+  const cav=document.getElementById('cav');
+  cav.style.background=agent.col; cav.textContent=agent.name[0];
+  document.getElementById('cnm').textContent=agent.name;
+  document.getElementById('cst').textContent=`${st} - mood: ${mood}`;
+  document.getElementById('cstats').innerHTML=`
+    <div class="sr"><span class="sl">P&L today</span><span class="sv ${agent.pnl>=0?'pos':'neg'}">${agent.pnl>=0?'+':''}${agent.pnl.toFixed(2)}%</span></div>
+    <div class="sr"><span class="sl">Trades</span><span class="sv">${agent.trades}</span></div>
+    <div class="sr"><span class="sl">Last action</span><span class="sv" style="font-size:9.5px">${agent.lastAct}</span></div>
+    <div class="sr"><span class="sl">Floor</span><span class="sv">${FLOORS.find(f=>f.id===agent.floor).name}</span></div>
+  `;
+  document.getElementById('clog').innerHTML=agent.log.map(l=>{
+    const p=l.split(' ');
+    return `<div class="lr"><span class="ts">${p[0]}</span> <span class="act">${p.slice(1).join(' ')}</span></div>`;
+  }).join('');
+  document.getElementById('acard').classList.add('show');
+}
+
+document.getElementById('cx').onclick=()=>{ document.getElementById('acard').classList.remove('show'); selId=null; };
+
+canvas.addEventListener('click',e=>{
+  const r=canvas.getBoundingClientRect();
+  const mx=(e.clientX-r.left)*(canvas.width/r.width);
+  const my=(e.clientY-r.top)*(canvas.height/r.height);
+  const h=hits.find(h=>mx>=h.x&&mx<=h.x+h.w&&my>=h.y&&my<=h.y+h.h);
+  if(h) openCard(h.agent);
+  else { document.getElementById('acard').classList.remove('show'); selId=null; }
+});
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+
+const ov=document.getElementById('moverlay');
+const ffs=document.getElementById('ff');
+FLOORS.forEach(f=>{ const o=document.createElement('option'); o.value=f.id; o.textContent=`Floor ${f.id} — ${f.name}`; ffs.appendChild(o); });
+
+const sw=document.getElementById('fsw');
+PALETTE.forEach(c=>{
+  const s=document.createElement('div');
+  s.className='sw'+(c===pickedCol?' sel':'');
+  s.style.background=c;
+  s.onclick=()=>{ pickedCol=c; sw.querySelectorAll('.sw').forEach(x=>x.classList.remove('sel')); s.classList.add('sel'); };
+  sw.appendChild(s);
+});
+
+document.getElementById('add-btn').onclick=()=>ov.classList.add('show');
+document.getElementById('mc').onclick=()=>ov.classList.remove('show');
+ov.onclick=e=>{ if(e.target===ov) ov.classList.remove('show'); };
+
+document.getElementById('mok').onclick=()=>{
+  const name=document.getElementById('fn').value.trim();
+  if(!name){ document.getElementById('fn').focus(); return; }
+  const fid=parseInt(ffs.value);
+  const now=new Date(), ts=now.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'});
+  agents.push(makeAgent('u'+Date.now(),name,pickedCol,fid,0,0,'No trades yet',[`${ts} Agent initialized`],Math.random()*Math.PI*2));
+  curFloor=fid;
+  ov.classList.remove('show');
+  document.getElementById('fn').value='';
+  buildSidebar(); updateTop();
+};
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────────
+
+function updateClock(){
+  document.getElementById('clock').textContent=
+    new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+updateClock(); setInterval(updateClock,1000);
+setInterval(()=>{ marketOpen=mktOpen(); updateTop(); buildSidebar(); },30000);
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+
+window.addEventListener('resize',()=>{ resize(); });
+resize(); updateTop(); buildSidebar(); render();
+</script>
+</body>
+</html>
